@@ -1,0 +1,107 @@
+//How the code was before re-organization began
+
+using GameStore.Api.Entities;
+string GetGameEndpointName = "GetGame";
+
+//Defining our in-memory list of games data
+List<Games> games = new()
+{
+    new Games(){
+        Id = 1,
+        Name = "Golo",
+        Genre = "Combat",
+        Price = 200.20M,
+        ReleasedDate = new DateTime(2000/2/6),
+        ImageUrl = "https://placeholder.co/100"
+    },
+     new Games(){
+        Id = 2,
+        Name = "Danie",
+        Genre = "Educational",
+        Price = 150.80M,
+        ReleasedDate = new DateTime(1998/6/10),
+        ImageUrl = "https://placeholder.co/100"
+    },
+    new Games(){
+        Id = 3,
+        Name = "Danie",
+        Genre = "Educational",
+        Price = 150.80M,
+        ReleasedDate = new DateTime(1998/6/10),
+        ImageUrl = "https://placeholder.co/100"
+    }
+};
+
+
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+var group = app.MapGroup("/games");
+
+//Defining endpoints for our rest API (Routes)
+
+//GET - retrieve endpoint
+//getting all games
+group.MapGet("/", () => games);
+
+//getting a game by its Id (Defining the get by Id endpoint and return 'not found' if game is null)
+app.MapGet("/{id}", (int id) =>
+{
+    Games? game = games.Find(game => game.Id == id);
+
+    if (game is null)
+    {
+        return Results.NotFound();
+    }
+    return Results.Ok(game);
+})
+    .WithName(GetGameEndpointName); //specifying a name for an endpoint.
+
+//POST - create endpoint
+//Endpoint for creating a game in our REST API
+app.MapPost("/games", (Games game) =>
+{
+    game.Id = games.Max(game => game.Id) + 1;
+    games.Add(game);
+    //create a new game with a location header and an id automatically generated
+    return Results.CreatedAtRoute(GetGameEndpointName, new { id = game.Id }, game);
+});
+
+//PUT - update endpoint
+//Endpoint for updating a game in our REST API
+app.MapPut("/games/{id}", (int id, Games updatedGame) =>
+{
+    Games? existingGame = games.Find(game => game.Id == id);
+
+    //if game does not exist, return 404 - Not Found
+    //another possible line of thinking is to create the item if not found. but this could create id conflict when not well managed
+    if (existingGame is null)
+    {
+        return Results.NotFound();
+    }
+
+    existingGame.Name = updatedGame.Name;
+    existingGame.Id = updatedGame.Id;
+    existingGame.Price = updatedGame.Price;
+    existingGame.Genre = updatedGame.Genre;
+    existingGame.ImageUrl = updatedGame.ImageUrl;
+
+    return Results.NoContent();
+});
+
+//Delete - delete endpoint
+//Endpoint for deleting a game in our REST API
+app.MapDelete("/games/{id}", (int id) =>
+{
+    Games? game = games.Find(game => game.Id == id);
+
+    if (game is not null)
+    {
+        games.Remove(game);
+    }
+    return Results.NoContent();
+});
+
+//Run the application
+app.Run();
+
